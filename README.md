@@ -31,4 +31,4 @@ The keyed synthetic run (Gemma, 160 notes) was stopped about a third of the way 
 ## Where the AI tooling was wrong
 The AI assistant wrote `DECISIONS.md` timestamps for D4–D9 from its own estimate rather than the clock, up to 2 h 24 m ahead of the real commits. A log that is graded against git history would have contradicted that history. Checking the entries against `git log` caught it. The entries were corrected with a visible note (commit `8d05b57`), and every later entry takes its time from `date` and names its commit. (A second catch: the assistant's first OpenAI default, gpt-5.4-mini, would have overrun the $6 cap. That surfaced when measured tokens were multiplied by the published prices.)
 
-Hours spent: about 4.5 (11:00–15:30 IST, 5 Nov 2026).
+Hours spent: about 8 (7:30–15:30 IST, 5 Nov 2026).
