@@ -136,3 +136,20 @@ Window: the pack arrived just after midnight on 2026-11-05 IST, so the deadline 
   - keyed on synthetic: not measured.
 - **Final knowledge base:** 254k terms, 3.2 MB.
 - **Revisit with a funded key:** run `tools/project.py`-equivalent on Haiku 5.5 and gpt-5-mini over dev plus 400 synthetic notes, A/B the specificity checklist, then decide on a Sonnet second opinion for low-confidence notes (about  of headroom).
+
+## D16 · 2026-11-05 17:13 · commit `7116ed3` · mocked integration tests; three keyed-path faults fixed
+
+- **Trigger:** Sugen replied (16:34) that no development keys are supplied, and asked for mocked tests of the integration. They also asked that no-key, mocked, live and estimated numbers be kept clearly apart, and that untested live behaviour be documented.
+- **Options:**
+  - Unit tests with a fake provider object. Rejected: they bypass the SDKs, which is where request shape and retries live.
+  - A local HTTP mock of both APIs that the shipped image reaches through `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL`. Chosen.
+- **Setup:** `tools/mock_api.py` and `tools/mock_test.py`. There are 18 mocked cases plus 2 live-unauth cases, in which a local CONNECT proxy relays to the real endpoints with an invalid key.
+- **Evidence:** the first run passed 17 of 18 mocked cases. It exposed:
+  1. An OpenAI fallback race. The shared `reasoning` flag was checked after a parallel worker had already cleared it, so 7 of 60 notes kept no-key answers.
+  2. The Anthropic `output_config` rejection was retried on every call.
+  3. The budget guard checked only spent money, so the 8 workers' in-flight calls could overshoot it.
+- **Fixes:** a per-request retry condition, a remembered `structured` flag, and a worst-case reservation per call. Reserved cost is the input at 3 chars/token plus the `max_tokens` cap.
+- **Result:** 20 of 20 pass (`results/mock_tests.txt`). The no-key output is byte-identical to `results/dev_nokey.pred.jsonl` (52.9/75).
+- **Correction to D15:** the revert there dropped one newline in CHOOSE, so "the shipped prompt is the measured one" was not quite true. The newline is restored, and SYSTEM, EXTRACT, CHOOSE and both schemas now compare equal to `d07b525`, the version the 67.5 stand-in ran on.
+- **Also:** `tools/project.py` now lifts the budget guard. It prices Gemini as an unknown model ($5/$25 per 1M tokens), which would stop a projection after about 60 notes.
+- **Revisit:** with a real key, run `tools/mock_test.py`'s happy-path checks live first. Then run the stand-in harness with the real provider on dev and the 400 synthetic notes.
