@@ -1,0 +1,12 @@
+[llm] provider=gemini(dev-proxy) model=gemini-3-flash-preview workers=3
+[llm] 50/60 $0.900 1229s
+[llm] done: calls=118 in=144811 out=13245 est=$1.055 fails=1
+served by: {'gemini-3-flash-preview': 8, 'gemini-flash-lite-latest': 102, 'gemini-3.5-flash-lite': 8}  wall=1525s
+tokens/note: in=2414 out=221
+  projected claude-haiku-5-5  : $0.035 cents/note -> $0.21 for 600 notes
+  projected claude-sonnet-5-5 : $0.703 cents/note -> $4.22 for 600 notes
+  projected gpt-5.4-mini      : $0.280 cents/note -> $1.68 for 600 notes
+  projected gpt-5.4-nano      : $0.076 cents/note -> $0.46 for 600 notes
+notes 60  missing predictions 0  invalid codes 0  duplicate ids 0
+slice A: n=60  top1 0.867  top3 0.967  points 67.5 / 75
+SCORE 67.5 / 75

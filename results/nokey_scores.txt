@@ -1,0 +1,8 @@
+== dev_notes
+slice A: n=60  top1 0.667  top3 0.783  points 52.9 / 75
+SCORE 52.9 / 75
+== synth_all
+slice A: n=150  top1 0.607  top3 0.673  points 47.2 / 75
+slice B: n=250  top1 0.308  top3 0.436  points 8.8 / 25
+SCORE 55.9 / 100
+baseline :: dev 52.9/75 | synth A 47.2/75 B 8.8/25 = 55.9/100 | verified-only A 53.4 B 9.9 = 63.3
