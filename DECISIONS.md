@@ -125,3 +125,14 @@ Window: the pack arrived just after midnight on 2026-11-05 IST, so the deadline 
 - **Read:** apart from `.Y` (-1.6 on dev and -1.7 on synthetic when removed), every knob is within about ±1 point, which is noise for 400 notes. Settings stay as they are rather than fitting noise. The chapter gates are neutral on synthetic and +0.8 on dev, and are kept because the rule is principled.
 - **Dense embeddings dropped** (D10 probe: about +1 to 3 top-1 points and +9 recall on general, no-key only). A gain of 1 to 2 points to the fallback path does not justify about 1.5 GB of torch plus model in the image, and a heavier `docker compose build` is a bigger risk to the clean-clone gate than the gain is worth. The keyed path covers language through its English extraction.
 - **Revisit:** an ONNX build of the embedding model (smaller, no torch) if time allows.
+
+## D15 · 2026-11-05 15:29 · commit `8c20b5f` · stopping here: ship what was measured
+
+- **Decision:** stop the remaining jobs (the Gemma synthetic projection at about 1/3 of 160 notes, and the WHO crawl after en, es, fr, pt and 80% of ar) and ship. The free-tier Gemini quota made every further keyed measurement slow and partial, and without a funded OpenAI or Anthropic key no further run would turn the projection into a measurement.
+- **Reverted the D12 choose-prompt checklist.** It was never measured (quota), and the 67.5/75 projection was produced without it, so the shipped prompt is the measured one.
+- **Final numbers** (official scorer; raw files in `results/`):
+  - no-key: dev 52.9/75; synthetic 55.9/100 (verified-only 63.3);
+  - keyed, Gemini stand-in: dev 67.5/75 (top-1 0.867, top-3 0.967);
+  - keyed on synthetic: not measured.
+- **Final knowledge base:** 254k terms, 3.2 MB.
+- **Revisit with a funded key:** run `tools/project.py`-equivalent on Haiku 5.5 and gpt-5-mini over dev plus 400 synthetic notes, A/B the specificity checklist, then decide on a Sonnet second opinion for low-confidence notes (about  of headroom).
