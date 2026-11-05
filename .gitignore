@@ -1,0 +1,7 @@
+# secrets
+*.env
+.env*
+
+# macOS resource-fork junk
+._*
+.DS_Store
