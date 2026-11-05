@@ -36,7 +36,12 @@ ABBR = {
     "mrsa": "methicillin resistant staphylococcus aureus", "ards": "acute respiratory distress syndrome",
     "rti": "respiratory tract infection", "ent": "ear nose throat", "fb": "foreign body", "rta": "road traffic accident injury",
     "ssti": "skin and soft tissue infection", "hfmd": "hand foot and mouth disease", "conj": "conjunctivitis",
-    "lmp": "", "bs": "blood smear", "mps": "malaria parasites", "mrdt": "malaria rapid diagnostic test", "rdt": "rapid diagnostic test",
+    "fgm": "female genital mutilation", "uri": "upper respiratory infection", "loc": "loss of consciousness",
+    "foosh": "fall on outstretched hand", "mva": "motor vehicle accident injury", "gsw": "gunshot wound",
+    "tbi": "traumatic brain injury", "acl": "anterior cruciate ligament", "mcl": "medial collateral ligament",
+    "ms": "multiple sclerosis", "pd": "parkinson disease", "hsv": "herpes simplex", "vzv": "varicella zoster",
+    "rsv": "respiratory syncytial virus", "ebv": "epstein barr virus", "cmv": "cytomegalovirus", "hpv": "papillomavirus",
+    "ttp": "", "bmi": "body mass index", "lmp": "", "bs": "blood smear", "mps": "malaria parasites", "mrdt": "malaria rapid diagnostic test", "rdt": "rapid diagnostic test",
     "ugs": "", "mcs": "microscopy culture sensitivity", "fbc": "full blood count", "cbc": "complete blood count",
     "esr": "", "crp": "", "rbs": "random blood sugar", "fbs": "fasting blood sugar", "hba1c": "glycated haemoglobin",
     "ecg": "", "cxr": "chest x-ray", "usg": "ultrasound", "u/e": "", "lft": "", "tft": "thyroid function",
@@ -49,7 +54,10 @@ SECTION = re.compile(
     r"diagnosa|निदान|ምርመራ)\s*[:\-–.]\s*(.+)$")
 DOC_TURN = re.compile(r"(?im)^\s*(?:doctor|dr|clinician|médico|medico|médecin|daktari|arzt|врач|医生|الطبيب|bác sĩ|doktor)\s*:\s*(.+)$")
 DX_CUE = re.compile(r"(?i)\b(this is|this looks like|looks like|you have|consistent with|in keeping with|diagnos\w*|"
-                    r"so it'?s|it'?s an?|we'?re dealing with|impression|likely|probably|confirms?|due to)\b")
+                    r"so it'?s|it'?s an?|we'?re dealing with|impression|likely|probably|confirms?|due to|"
+                    r"suggestive of|suspect\w*|indicative of|compatible with|keeping with|c/w|\?\s*[a-z]|"
+                    r"compatible con|sugestivo de|sugestiva de|compatible avec|en faveur d|evocateur|évocateur|"
+                    r"vereinbar mit|verdacht auf|v\.a\.|inaonekana|dalili za)\b")
 
 
 def fold(s):
@@ -104,4 +112,8 @@ def diagnosis_text(text):
             return " ".join(cued)
     # short notes: 'Dx'/'Imp' inline (e.g. "... Dx viral URTI, malaria excluded.")
     m = re.findall(r"(?i)\b(?:dx|imp|impression|diagnosis|assessment)\b\s*[:\-–]?\s*([^.;\n]+)", text)
-    return " ; ".join(m)
+    if m:
+        return " ; ".join(m)
+    # no label anywhere: sentences carrying a diagnostic cue ("... consistent with FGM type 2a")
+    cued = [sent for sent in re.split(r"(?<=[.!?])\s+|\n", text) if DX_CUE.search(sent)]
+    return " ".join(cued[:3])
