@@ -5,3 +5,7 @@
 # macOS resource-fork junk
 ._*
 .DS_Store
+
+# build caches (raw downloads; derived artefacts ship instead)
+cache/
+__pycache__/

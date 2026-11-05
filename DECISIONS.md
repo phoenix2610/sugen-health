@@ -27,3 +27,17 @@ Window: the pack arrived just after midnight on 2026-11-05 IST, so the deadline 
 - **Options:** titles only; scraping the ICD browser; the API; the WHO offline Docker container.
 - **Why:** a test entity (`1A00`) returns `definition`, `inclusion`, `indexTerm` and `fullySpecifiedName`, which is the synonym and lay-term coverage that titles lack. The API also serves non-English languages, which matter for the multilingual hidden slice.
 - **Revisit:** whether the offline container is faster for a full crawl in several languages.
+
+## D4 · 2026-11-05 14:40 · no paid OpenAI/Anthropic credit, so the keyed path is a projection
+
+- **Decision:** build the OpenAI and Anthropic run-time path fully, but measure it by running the identical prompt and candidates through Gemini as a stand-in. Cost is projected from the measured token counts at OpenAI and Anthropic list prices.
+- **Options:** buy credit; ship only the no-key path; project the keyed path from a stand-in model.
+- **Evidence:** the OpenAI key we have authenticates (`/v1/models` returns 200 and lists gpt-5.x), but every completion fails with `429 insufficient_quota / credit_balance_exhausted`. The author is not in a position to add credit.
+- **Consequence:** the no-key path is the only one we can verify end to end, so it gets real effort. The keyed path must degrade safely, per note, on any API error: bad key, quota, timeout or proxy.
+- **Revisit:** a single real run on GPT or Claude would replace the projection with a measurement.
+
+## D5 · 2026-11-05 14:45 · predict leaf codes only
+
+- **Decision:** restrict candidates to the 15,912 leaf categories (10,578 specific plus 5,334 residual `.Y`/`.Z`). Never output a non-leaf parent.
+- **Evidence:** all 61 dev gold codes are leaves. 14 (23%) are `.Z` unspecified, 0 are `.Y`. The brief says a parent does not count when a child fits.
+- **Revisit:** if a non-leaf turns up as gold in our synthetic or translated checks.
