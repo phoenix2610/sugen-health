@@ -20,29 +20,48 @@ def _key():
     raise RuntimeError("no API_KEY in " + KEY_FILE)
 
 
-def generate(prompt, model="gemini-3.6-flash", system=None, temperature=0.7, json_mode=False, tries=5):
-    body = {"contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": temperature}}
-    if system:
-        body["systemInstruction"] = {"parts": [{"text": system}]}
-    if json_mode:
-        body["generationConfig"]["responseMimeType"] = "application/json"
-    for i in range(tries):
-        req = urllib.request.Request(ENDPOINT.format(model=model), data=json.dumps(body).encode(),
-                                     headers={"Content-Type": "application/json", "x-goog-api-key": _key()})
-        try:
-            r = json.load(urllib.request.urlopen(req, timeout=120))
-            text = "".join(p.get("text", "") for p in r["candidates"][0]["content"]["parts"])
-            return text, r.get("usageMetadata", {})
-        except urllib.error.HTTPError as e:
-            msg = e.read().decode()[:300]
-            if e.code in (429, 500, 502, 503, 504):
-                time.sleep(4 * (i + 1))
-                continue
-            raise RuntimeError(f"{e.code}: {msg}")
-        except (KeyError, IndexError, urllib.error.URLError, TimeoutError):
-            time.sleep(4 * (i + 1))
-    raise RuntimeError("gemini: retries exhausted")
+EXHAUSTED = set()  # models whose free-tier daily quota is used up this run
+
+
+def generate(prompt, model="gemma-4-26b-a4b-it", system=None, temperature=0.7, json_mode=False, tries=6,
+             fallbacks=("gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-flash-lite-latest")):
+    """Call Gemini; on a daily-quota 429 move to the next model in `fallbacks` (free-tier key)."""
+    models = [m for m in (model, *fallbacks) if m not in EXHAUSTED]
+    last = None
+    for m in models:
+        body = {"contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": temperature}}
+        if system:
+            body["systemInstruction"] = {"parts": [{"text": system}]}
+        if json_mode and not m.startswith("gemma"):
+            body["generationConfig"]["responseMimeType"] = "application/json"
+        for i in range(tries):
+            req = urllib.request.Request(ENDPOINT.format(model=m), data=json.dumps(body).encode(),
+                                         headers={"Content-Type": "application/json", "x-goog-api-key": _key()})
+            try:
+                r = json.load(urllib.request.urlopen(req, timeout=180))
+                parts = r["candidates"][0]["content"]["parts"]
+                text = "".join(p.get("text", "") for p in parts if not p.get("thought"))
+                if json_mode:
+                    a, b = text.find("{"), text.rfind("}")
+                    text = text[a:b + 1] if a >= 0 else text
+                u = r.get("usageMetadata", {})
+                u["model"] = m
+                return text, u
+            except urllib.error.HTTPError as e:
+                msg = e.read().decode()[:600]
+                last = f"{m} {e.code}: {msg[:200]}"
+                if e.code == 429 and "per day" in msg.lower() or "PerDay" in msg:
+                    EXHAUSTED.add(m)
+                    break
+                if e.code in (429, 500, 502, 503, 504):
+                    time.sleep(min(60, 5 * (i + 1)))
+                    continue
+                break
+            except (KeyError, IndexError, urllib.error.URLError, TimeoutError, OSError) as e:
+                last = f"{m}: {e!r}"
+                time.sleep(3 * (i + 1))
+    raise RuntimeError("gemini: all models failed; last=" + str(last))
 
 
 if __name__ == "__main__":

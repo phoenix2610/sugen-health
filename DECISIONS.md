@@ -41,3 +41,11 @@ Window: the pack arrived just after midnight on 2026-11-05 IST, so the deadline 
 - **Decision:** restrict candidates to the 15,912 leaf categories (10,578 specific plus 5,334 residual `.Y`/`.Z`). Never output a non-leaf parent.
 - **Evidence:** all 61 dev gold codes are leaves. 14 (23%) are `.Z` unspecified, 0 are `.Y`. The brief says a parent does not count when a child fits.
 - **Revisit:** if a non-leaf turns up as gold in our synthetic or translated checks.
+
+## D6 · 2026-11-05 15:20 · synthetic evaluation set: free-tier Gemini, so Gemma writes and flash-lite checks
+
+- **Decision:** generate about 500 synthetic notes: 200 "core" (East-African outpatient, English, the 3 dev styles, chapters weighted like dev gold) and 300 "general" (all chapters, 14 settings, about half non-English or code-mixed, 7 styles). `gemma-4-26b-a4b-it` writes each note against a random 120-code slice of one chapter, seeing the chosen code's siblings so the note carries, or deliberately omits, the distinguishing detail. A different model (`gemini-3.1-flash-lite`) then re-codes it blind against the sibling family, and agreement is stored as `verified`.
+- **Options:** hand-writing notes (too slow for every chapter); translating the dev notes (covers language only, not chapters); LLM-written notes with a blind re-coding check.
+- **Evidence:** the first run used `gemini-3.6-flash`; 26 of the first calls failed with `429 ... free_tier_requests, limit: 20` (per day). The key is free tier. Probing showed Gemma 4 and the flash-lite models still serve, so the client now rotates models when one hits its daily limit.
+- **Known bias:** an LLM writing for a code it was shown tends to name the diagnosis cleanly, so synthetic accuracy will read high. Report verified and unverified notes separately and weight dev accuracy above synthetic.
+- **Revisit:** a paid tier for a stronger writer; a human pass over a sample.
