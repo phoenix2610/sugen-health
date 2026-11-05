@@ -73,4 +73,4 @@
 2. **Default model.** Its first OpenAI default, gpt-5.4-mini, would have overrun the $6 cap.
 3. **Code it wrote.** The three mock-found faults were its code. Its D15 prompt revert also dropped a newline, caught by a byte comparison (D16).
 
-Hours spent: about 8 (7:30–15:30 IST, 5 Nov 2026).
+Hours spent: about 8.5 (7:30–15:30 and 16:55–17:20 IST, 5 Nov 2026).
