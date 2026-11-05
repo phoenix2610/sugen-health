@@ -10,3 +10,5 @@
 cache/
 __pycache__/
 .venv/
+in/
+out/

@@ -65,3 +65,13 @@ Window: the pack arrived just after midnight on 2026-11-05 IST, so the deadline 
 - **Evidence:** a projection on 5 dev notes with `gemini-3-flash-preview` as the stand-in got 5 of 5 right, using about 2.2k input and 2.1k output tokens per note. At list prices: Haiku 5.5 about 0.13¢ per note ($0.77 for 600); Sonnet 5.5 about 2.6¢ per note ($15, over the cap); gpt-5.4-mini about 1.1¢ (OpenAI prices unverified). Haiku 5.5 is the only strong option with real headroom under $6.
 - **Safety:** a $5.00 budget guard, a 45-minute deadline guard, per-note fallback to the no-key answer, and an output file rewritten atomically after the no-key pass.
 - **Revisit:** spend the remaining headroom (about $5) on a Sonnet second opinion for low-confidence notes.
+
+## D9 · 2026-11-05 17:20 · container, failure modes and a circuit breaker
+
+- **Decision:** `python:3.12-slim` with numpy, scipy and pinned Anthropic and OpenAI SDKs; no torch for now. The knowledge base (`coder/data/kb.json.gz`) ships in the repo, and the image build fails if it does not load. Compose passes the keys and proxy variables through and mounts `./in` and `./out`.
+- **Measured, exact grading command on dev:**
+  - no key: complete file in 0.7 s, **53.7 / 75**;
+  - bad key with real network: 401s, the breaker trips, done in 3 s, same 53.7;
+  - dead proxy (`HTTPS_PROXY=10.255.255.1`): before the breaker, every call hung (60 s timeout × retries) until the deadline guard, 183 s for 60 notes, and on 600 notes it would have burnt the 45-minute guard. Added a 10 s connect timeout and a breaker (stop after 16 failures with no success): **96 s**.
+- **Untestable surface:** the OpenAI key has no credit, and OpenAI checks credit *before* validating parameters (a deliberately bad `reasoning_effort` also returns 429), so our request body has not been validated against OpenAI. We know only that `gpt-5.4-mini` exists (a bad model name returns 404, ours does not). Anthropic is likewise checked only up to authentication. Mitigation: each provider retries without the optional parameters (`output_config`, `reasoning_effort`) if the API rejects them.
+- **Revisit:** the volume layout, in case the graders mount differently. Worth asking by email.

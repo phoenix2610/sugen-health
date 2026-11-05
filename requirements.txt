@@ -1,0 +1,5 @@
+# run-time only (tools/ use the dev venv)
+numpy==2.5.4
+scipy==1.18.1
+anthropic==2.5.0
+openai==3.46.0

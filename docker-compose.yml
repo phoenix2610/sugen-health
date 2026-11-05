@@ -1,0 +1,17 @@
+services:
+  coder:
+    build: .
+    image: sugen-icd11-coder
+    environment:
+      # keys and proxy are passed through from the grading environment; any may be unset
+      - OPENAI_API_KEY
+      - ANTHROPIC_API_KEY
+      - HTTPS_PROXY
+      - HTTP_PROXY
+      - NO_PROXY
+      - https_proxy
+      - http_proxy
+      - no_proxy
+    volumes:
+      - ./in:/in
+      - ./out:/out

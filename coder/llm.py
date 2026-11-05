@@ -24,6 +24,7 @@ DEADLINE_S = float(os.environ.get("CODER_DEADLINE_S", 45 * 60))
 BUDGET_USD = float(os.environ.get("CODER_BUDGET_USD", 5.0))
 WORKERS = int(os.environ.get("CODER_WORKERS", 8))
 N_CAND = int(os.environ.get("CODER_N_CAND", 40))
+BREAKER = int(os.environ.get("CODER_BREAKER", 16))  # consecutive-from-start failures before giving up
 
 # $ per 1M tokens (input, output). Anthropic figures from the current price list; OpenAI figures are
 # conservative placeholders (overestimates keep us under the cap) and are configurable via env.
@@ -124,7 +125,7 @@ class AnthropicProvider:
     def __init__(self, model=None):
         import anthropic
         self.model = model or os.environ.get("CODER_ANTHROPIC_MODEL", "claude-haiku-5-5")
-        self.client = anthropic.Anthropic(timeout=60.0, max_retries=2)
+        self.client = anthropic.Anthropic(timeout=anthropic.Timeout(60.0, connect=10.0), max_retries=2)
 
     def complete(self, user, schema, effort="low", max_tokens=3000):
         kw = dict(model=self.model, max_tokens=max_tokens, system=SYSTEM,
@@ -147,7 +148,7 @@ class OpenAIProvider:
     def __init__(self, model=None):
         import openai
         self.model = model or os.environ.get("CODER_OPENAI_MODEL", "gpt-5.4-mini")
-        self.client = openai.OpenAI(timeout=60.0, max_retries=2)
+        self.client = openai.OpenAI(timeout=openai.Timeout(60.0, connect=10.0), max_retries=2)
         self.reasoning = True
 
     def complete(self, user, schema, effort="low", max_tokens=3000):
@@ -290,14 +291,23 @@ def run_llm(notes, ids, kb, ranker, base, writer, t_start, provider=None, log=No
     term_index = build_term_index(kb)
     print(f"[llm] provider={provider.name} model={provider.model} workers={WORKERS}", file=sys.stderr)
     fails = 0
+    state = {"ok": 0, "err": 0}
+    lock = threading.Lock()
 
     def work(n, nid):
         if time.time() - t_start > DEADLINE_S:
             return nid, None, "deadline"
+        with lock:  # circuit breaker: provider unreachable / key invalid -> stop trying, keep no-key answers
+            if state["ok"] == 0 and state["err"] >= BREAKER:
+                return nid, None, "breaker"
         try:
             codes, ext = code_note(provider, budget, kb, ranker, str(n.get("text") or ""), term_index, base[nid])
+            with lock:
+                state["ok"] += 1
             return nid, codes, ext
         except Exception as e:
+            with lock:
+                state["err"] += 1
             return nid, None, repr(e)[:200]
 
     with ThreadPoolExecutor(WORKERS) as ex:
