@@ -9,3 +9,4 @@
 # build caches (raw downloads; derived artefacts ship instead)
 cache/
 __pycache__/
+.venv/

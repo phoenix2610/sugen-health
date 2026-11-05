@@ -133,7 +133,8 @@ def one(slice_, i, seed, lock, out):
     for attempt in range(4):
         prompt, ch, style, lang = make_prompt(slice_, rng)
         try:
-            txt, _ = generate(prompt, model="gemma-4-26b-a4b-it", temperature=1.0, json_mode=True)
+            txt, _ = generate(prompt, model="gemini-3.1-flash-lite", temperature=1.0, json_mode=True,
+                              fallbacks=("gemini-flash-lite-latest", "gemini-3-flash-preview"))
             j = json.loads(txt)
             code, note = j["code"].strip(), j["note"].strip()
         except Exception as e:
@@ -147,7 +148,7 @@ def one(slice_, i, seed, lock, out):
         rng.shuffle(fam)
         opts = "\n".join(f"{r['code']}\t{r['title']}" for r in fam)
         try:
-            vt, _ = generate(VERIFY.format(note=note, opts=opts), model="gemini-3.1-flash-lite", temperature=0, fallbacks=("gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemma-4-26b-a4b-it"),
+            vt, _ = generate(VERIFY.format(note=note, opts=opts), model="gemini-3.5-flash-lite", temperature=0, fallbacks=("gemini-flash-lite-latest", "gemini-3-flash-preview"),
                              json_mode=True)
             vcode = json.loads(vt).get("code", "").strip()
         except Exception:
@@ -169,7 +170,7 @@ def main():
     if os.path.exists(path):
         have = {json.loads(l)["id"] for l in open(path, encoding="utf-8")}
     lock = threading.Lock()
-    with open(path, "a", encoding="utf-8") as out, ThreadPoolExecutor(3) as ex:
+    with open(path, "a", encoding="utf-8") as out, ThreadPoolExecutor(4) as ex:
         for i in range(n):
             if f"syn-{slice_}-{i:04d}" not in have:
                 ex.submit(one, slice_, i, 1000 * (slice_ == "general") + i, lock, out)

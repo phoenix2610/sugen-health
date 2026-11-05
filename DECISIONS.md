@@ -49,3 +49,19 @@ Window: the pack arrived just after midnight on 2026-11-05 IST, so the deadline 
 - **Evidence:** the first run used `gemini-3.6-flash`; 26 of the first calls failed with `429 ... free_tier_requests, limit: 20` (per day). The key is free tier. Probing showed Gemma 4 and the flash-lite models still serve, so the client now rotates models when one hits its daily limit.
 - **Known bias:** an LLM writing for a code it was shown tends to name the diagnosis cleanly, so synthetic accuracy will read high. Report verified and unverified notes separately and weight dev accuracy above synthetic.
 - **Revisit:** a paid tier for a stronger writer; a human pass over a sample.
+
+## D7 · 2026-11-05 16:40 · lexical retrieval over WHO terms as the no-key path and candidate generator
+
+- **Decision:** score every WHO term (titles, full names, index terms, inclusions; English plus 8 languages) by the rarity-weighted share of its words found in the note: `matched × coverage^p`. Roll terms up to codes by taking the maximum. Score the clinician's stated diagnosis (`A:`, `Imp:`, `Dx`, the doctor's turns with a diagnostic cue) at full weight and the whole note at 0.35. A `.Z` child inherits its parent's terms. Leaves only.
+- **Options:** title-only search; full-text search over each code's concatenated terms (long documents get penalised); dense embeddings (deferred until measured); matching each term on its own.
+- **Evidence (dev, 60):** the titles-and-coverage² baseline scored top-1 0.583, top-3 0.767, R@10 0.933, R@100 1.00. Sweeping the coverage power p gave 1.0 → 0.617, 1.5 → 0.650, 2.0 → 0.667, 3.0 → 0.617 top-1. Took 2.0 provisionally, pending the synthetic sets.
+- **General rules, not tuned to dev:** `.Y` ×0.6 (never gold, rarely decidable from text). Obstetric (ch 18) and perinatal (ch 19) codes ×0.35 unless pregnancy or newborn wording appears; the regexes cover 10+ languages. These came from failures like `KA64.20 Congenital falciparum malaria` outranking adult malaria.
+- **Revisit:** dense multilingual embeddings for Swahili, Hindi and Amharic, which have no WHO translation.
+
+## D8 · 2026-11-05 16:45 · keyed path: extract, retrieve, choose; Claude Haiku 5.5 by default
+
+- **Decision:** two calls per note. (1) Extract the main diagnosis in English, with its qualifiers, synonyms and other diagnoses. (2) Choose up to 3 codes from about 40 retrieved candidates plus the families of the leading candidates, so `.Z` versus a specific child is a visible choice. The output is validated against MMS and forced to a leaf, then topped up to 3 from the no-key ranking. Provider order: Anthropic, then OpenAI, then none.
+- **Options:** a single call with candidates only (fails on non-English notes, because retrieval runs on the raw text); letting the LLM recall codes freely (risk of invalid or hallucinated codes); a two-call cascade with a bigger model only on low-confidence notes.
+- **Evidence:** a projection on 5 dev notes with `gemini-3-flash-preview` as the stand-in got 5 of 5 right, using about 2.2k input and 2.1k output tokens per note. At list prices: Haiku 5.5 about 0.13¢ per note ($0.77 for 600); Sonnet 5.5 about 2.6¢ per note ($15, over the cap); gpt-5.4-mini about 1.1¢ (OpenAI prices unverified). Haiku 5.5 is the only strong option with real headroom under $6.
+- **Safety:** a $5.00 budget guard, a 45-minute deadline guard, per-note fallback to the no-key answer, and an output file rewritten atomically after the no-key pass.
+- **Revisit:** spend the remaining headroom (about $5) on a Sonnet second opinion for low-confidence notes.
