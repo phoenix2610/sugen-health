@@ -77,3 +77,10 @@ Window: the pack arrived just after midnight on 2026-11-05 IST, so the deadline 
 - **Revisit:** the volume layout, in case the graders mount differently. Worth asking by email.
 
 > **Correction (15:08):** D4 to D9 were first written with times estimated by the AI assistant (up to 17:20) instead of read from the clock. They are now matched to the actual commit times from `git log`, and every entry names its commit. From here on, times come from `date` at commit.
+
+## D10 · 2026-11-05 15:08 · commit `d07b525` · tuning on synthetic, not dev; OpenAI default changed to gpt-5-mini; dense retrieval held back
+
+- **Coverage power:** on 60 dev plus 140 synthetic notes, p=2.0 won only on dev (0.667 against 0.650 at 1.5), while 1.5 matched or beat it on both synthetic slices (core 0.650 vs 0.633, general 0.237 vs 0.225). Took **1.5**, the less dev-fitted value.
+- **No-key baseline, official scorer:** dev **52.5/75** (top-1 0.650, top-3 0.800). Synthetic, weighted like the hidden 450/150 split: core 49.6/75 plus general 7.5/25 = **57.0/100**. The general slice is the weak spot: non-English R@30 is 0.40 against 0.70 for English, and chapters 22 (injury), 24 (factors) and 16 (genitourinary) have about 0 recall.
+- **OpenAI prices checked** on developers.openai.com/api/docs/pricing: gpt-5.4-mini /usr/bin/zsh.75/.50, gpt-5-mini /usr/bin/zsh.25/.00 per 1M tokens. At the measured 2.2k input and 2.1k output tokens per note, gpt-5.4-mini projects to **.76 for 600 notes, over the  cap**, so the  guard would cut about 150 notes back to no-key answers. Default changed to **gpt-5-mini** (about .90). Anthropic stays first (Haiku 5.5, about /usr/bin/zsh.77).
+- **Dense retrieval (multilingual-e5-small over 66k English terms, 331 s to encode):** union recall on the general slice 0.533 → 0.622; fused top-1 +1 to 3 points. Costs torch plus a 470 MB model in the image. **Held back** until the keyed projection shows whether the LLM's English extraction already recovers that recall.
