@@ -1,19 +1,19 @@
 # Decisions log
 
-Kept as we go. Each entry has its time (IST), the commit it goes with, the decision and the options considered, the evidence that decided it, and what to revisit.
+Kept as we go. Each entry has its time (IST, matching the commit), the commit it goes with, the decision and the options considered, the evidence that decided it, and what to revisit.
 
 Window: the pack arrived just after midnight on 2026-11-05 IST, so the deadline is about 00:00 on 2026-11-08 IST.
 
 ---
 
-## D1 · 2026-11-05 14:05 · repo layout
+## D1 · 2026-11-05 14:05 · commit `7033d39` · repo layout
 
 - **Decision:** one repo. The files Sugen gave us live untouched under `problem/`, and the solution lives beside them. `docker-compose.yml` has to sit at the repo root, because the graders run `docker compose run coder ...` from a clean clone.
 - **Options:** a separate solution repo; the given files left at the root mixed in with our code; a `problem/` subdirectory.
 - **Why:** a subdirectory keeps the history in one place, as the brief asks, and keeps the given files clearly separate from ours. `problem/score.py` is the exact grading script, so we never edit it.
 - **Revisit:** nothing likely.
 
-## D2 · 2026-11-05 14:05 · Gemini for development only, OpenAI/Anthropic at run time
+## D2 · 2026-11-05 14:05 · commit `7033d39` · Gemini for development only, OpenAI/Anthropic at run time
 
 - **Decision:** use Gemini (the author's existing key, kept outside the repo in `~/whatever/gemini.env`) only for offline, build-time work: generating synthetic evaluation notes, translations, and trying out prompts. At run time the system calls only OpenAI or Anthropic.
 - **Options:** Gemini at run time; no LLM at all during development; Gemini as a development stand-in behind a provider-neutral interface.
@@ -21,14 +21,14 @@ Window: the pack arrived just after midnight on 2026-11-05 IST, so the deadline 
 - **Risk:** the real run-time providers are untested until we have an OpenAI or Anthropic key. Gemini and Claude/GPT behave differently on the same prompt.
 - **Revisit:** get even a small OpenAI or Anthropic key and run the full dev set through the real path before submitting.
 
-## D3 · 2026-11-05 14:05 · WHO ICD-API for extra data
+## D3 · 2026-11-05 14:05 · commit `7033d39` (crawler: `2b8d494`) · WHO ICD-API for extra data
 
 - **Decision:** pull per-code detail for all 18,375 MMS 2026-01 categories from the official WHO ICD-API (`id.who.int`, release `2026-01`, OAuth client credentials) at build time, and commit a compact derived index.
 - **Options:** titles only; scraping the ICD browser; the API; the WHO offline Docker container.
 - **Why:** a test entity (`1A00`) returns `definition`, `inclusion`, `indexTerm` and `fullySpecifiedName`, which is the synonym and lay-term coverage that titles lack. The API also serves non-English languages, which matter for the multilingual hidden slice.
 - **Revisit:** whether the offline container is faster for a full crawl in several languages.
 
-## D4 · 2026-11-05 14:40 · no paid OpenAI/Anthropic credit, so the keyed path is a projection
+## D4 · 2026-11-05 14:30 · commit `2b8d494` · no paid OpenAI/Anthropic credit, so the keyed path is a projection
 
 - **Decision:** build the OpenAI and Anthropic run-time path fully, but measure it by running the identical prompt and candidates through Gemini as a stand-in. Cost is projected from the measured token counts at OpenAI and Anthropic list prices.
 - **Options:** buy credit; ship only the no-key path; project the keyed path from a stand-in model.
@@ -36,13 +36,13 @@ Window: the pack arrived just after midnight on 2026-11-05 IST, so the deadline 
 - **Consequence:** the no-key path is the only one we can verify end to end, so it gets real effort. The keyed path must degrade safely, per note, on any API error: bad key, quota, timeout or proxy.
 - **Revisit:** a single real run on GPT or Claude would replace the projection with a measurement.
 
-## D5 · 2026-11-05 14:45 · predict leaf codes only
+## D5 · 2026-11-05 14:31 · commit `2b8d494` · predict leaf codes only
 
 - **Decision:** restrict candidates to the 15,912 leaf categories (10,578 specific plus 5,334 residual `.Y`/`.Z`). Never output a non-leaf parent.
 - **Evidence:** all 61 dev gold codes are leaves. 14 (23%) are `.Z` unspecified, 0 are `.Y`. The brief says a parent does not count when a child fits.
 - **Revisit:** if a non-leaf turns up as gold in our synthetic or translated checks.
 
-## D6 · 2026-11-05 15:20 · synthetic evaluation set: free-tier Gemini, so Gemma writes and flash-lite checks
+## D6 · 2026-11-05 14:40 · commit `84f5443` · synthetic evaluation set: free-tier Gemini, so Gemma writes and flash-lite checks
 
 - **Decision:** generate about 500 synthetic notes: 200 "core" (East-African outpatient, English, the 3 dev styles, chapters weighted like dev gold) and 300 "general" (all chapters, 14 settings, about half non-English or code-mixed, 7 styles). `gemma-4-26b-a4b-it` writes each note against a random 120-code slice of one chapter, seeing the chosen code's siblings so the note carries, or deliberately omits, the distinguishing detail. A different model (`gemini-3.1-flash-lite`) then re-codes it blind against the sibling family, and agreement is stored as `verified`.
 - **Options:** hand-writing notes (too slow for every chapter); translating the dev notes (covers language only, not chapters); LLM-written notes with a blind re-coding check.
@@ -50,7 +50,7 @@ Window: the pack arrived just after midnight on 2026-11-05 IST, so the deadline 
 - **Known bias:** an LLM writing for a code it was shown tends to name the diagnosis cleanly, so synthetic accuracy will read high. Report verified and unverified notes separately and weight dev accuracy above synthetic.
 - **Revisit:** a paid tier for a stronger writer; a human pass over a sample.
 
-## D7 · 2026-11-05 16:40 · lexical retrieval over WHO terms as the no-key path and candidate generator
+## D7 · 2026-11-05 14:47 · commit `9a5f3e5` · lexical retrieval over WHO terms as the no-key path and candidate generator
 
 - **Decision:** score every WHO term (titles, full names, index terms, inclusions; English plus 8 languages) by the rarity-weighted share of its words found in the note: `matched × coverage^p`. Roll terms up to codes by taking the maximum. Score the clinician's stated diagnosis (`A:`, `Imp:`, `Dx`, the doctor's turns with a diagnostic cue) at full weight and the whole note at 0.35. A `.Z` child inherits its parent's terms. Leaves only.
 - **Options:** title-only search; full-text search over each code's concatenated terms (long documents get penalised); dense embeddings (deferred until measured); matching each term on its own.
@@ -58,7 +58,7 @@ Window: the pack arrived just after midnight on 2026-11-05 IST, so the deadline 
 - **General rules, not tuned to dev:** `.Y` ×0.6 (never gold, rarely decidable from text). Obstetric (ch 18) and perinatal (ch 19) codes ×0.35 unless pregnancy or newborn wording appears; the regexes cover 10+ languages. These came from failures like `KA64.20 Congenital falciparum malaria` outranking adult malaria.
 - **Revisit:** dense multilingual embeddings for Swahili, Hindi and Amharic, which have no WHO translation.
 
-## D8 · 2026-11-05 16:45 · keyed path: extract, retrieve, choose; Claude Haiku 5.5 by default
+## D8 · 2026-11-05 14:48 · commit `9a5f3e5` · keyed path: extract, retrieve, choose; Claude Haiku 5.5 by default
 
 - **Decision:** two calls per note. (1) Extract the main diagnosis in English, with its qualifiers, synonyms and other diagnoses. (2) Choose up to 3 codes from about 40 retrieved candidates plus the families of the leading candidates, so `.Z` versus a specific child is a visible choice. The output is validated against MMS and forced to a leaf, then topped up to 3 from the no-key ranking. Provider order: Anthropic, then OpenAI, then none.
 - **Options:** a single call with candidates only (fails on non-English notes, because retrieval runs on the raw text); letting the LLM recall codes freely (risk of invalid or hallucinated codes); a two-call cascade with a bigger model only on low-confidence notes.
@@ -66,7 +66,7 @@ Window: the pack arrived just after midnight on 2026-11-05 IST, so the deadline 
 - **Safety:** a $5.00 budget guard, a 45-minute deadline guard, per-note fallback to the no-key answer, and an output file rewritten atomically after the no-key pass.
 - **Revisit:** spend the remaining headroom (about $5) on a Sonnet second opinion for low-confidence notes.
 
-## D9 · 2026-11-05 17:20 · container, failure modes and a circuit breaker
+## D9 · 2026-11-05 14:56 · commit `b19de65` · container, failure modes and a circuit breaker
 
 - **Decision:** `python:3.12-slim` with numpy, scipy and pinned Anthropic and OpenAI SDKs; no torch for now. The knowledge base (`coder/data/kb.json.gz`) ships in the repo, and the image build fails if it does not load. Compose passes the keys and proxy variables through and mounts `./in` and `./out`.
 - **Measured, exact grading command on dev:**
@@ -75,3 +75,5 @@ Window: the pack arrived just after midnight on 2026-11-05 IST, so the deadline 
   - dead proxy (`HTTPS_PROXY=10.255.255.1`): before the breaker, every call hung (60 s timeout × retries) until the deadline guard, 183 s for 60 notes, and on 600 notes it would have burnt the 45-minute guard. Added a 10 s connect timeout and a breaker (stop after 16 failures with no success): **96 s**.
 - **Untestable surface:** the OpenAI key has no credit, and OpenAI checks credit *before* validating parameters (a deliberately bad `reasoning_effort` also returns 429), so our request body has not been validated against OpenAI. We know only that `gpt-5.4-mini` exists (a bad model name returns 404, ours does not). Anthropic is likewise checked only up to authentication. Mitigation: each provider retries without the optional parameters (`output_config`, `reasoning_effort`) if the API rejects them.
 - **Revisit:** the volume layout, in case the graders mount differently. Worth asking by email.
+
+> **Correction (15:08):** D4 to D9 were first written with times estimated by the AI assistant (up to 17:20) instead of read from the clock. They are now matched to the actual commit times from `git log`, and every entry names its commit. From here on, times come from `date` at commit.
