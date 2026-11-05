@@ -63,7 +63,7 @@ class KB:
                 v[j] = 1.0
         return v
 
-    COV_POW = 2.0
+    COV_POW = 1.5
 
     def term_scores(self, text):
         """Per-term score: idf mass of the term's words found in the text, discounted by the share left unmatched.

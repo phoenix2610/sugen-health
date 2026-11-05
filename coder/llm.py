@@ -26,12 +26,13 @@ WORKERS = int(os.environ.get("CODER_WORKERS", 8))
 N_CAND = int(os.environ.get("CODER_N_CAND", 40))
 BREAKER = int(os.environ.get("CODER_BREAKER", 16))  # consecutive-from-start failures before giving up
 
-# $ per 1M tokens (input, output). Anthropic figures from the current price list; OpenAI figures are
-# conservative placeholders (overestimates keep us under the cap) and are configurable via env.
+# $ per 1M tokens (input, output), standard tier, checked 2026-11-05 (Anthropic model list; OpenAI pricing page).
+# Unknown models are charged at (5, 25) so the budget guard errs on the safe side.
 PRICES = {
     "claude-haiku-5-5": (0.10, 0.50),
     "claude-sonnet-5-5": (2.00, 10.00),
-    "gpt-5.4-mini": (float(os.environ.get("CODER_OAI_IN", 0.75)), float(os.environ.get("CODER_OAI_OUT", 4.50))),
+    "gpt-5-mini": (0.25, 2.00),
+    "gpt-5.4-mini": (0.75, 4.50),
     "gpt-5.4-nano": (0.20, 1.25),
 }
 
@@ -147,7 +148,7 @@ class OpenAIProvider:
 
     def __init__(self, model=None):
         import openai
-        self.model = model or os.environ.get("CODER_OPENAI_MODEL", "gpt-5.4-mini")
+        self.model = model or os.environ.get("CODER_OPENAI_MODEL", "gpt-5-mini")
         self.client = openai.OpenAI(timeout=openai.Timeout(60.0, connect=10.0), max_retries=2)
         self.reasoning = True
 
