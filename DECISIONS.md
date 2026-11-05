@@ -105,3 +105,23 @@ Window: the pack arrived just after midnight on 2026-11-05 IST, so the deadline 
 - **Core** 150 (English, 17 chapters): 118 verified, 30 where the blind verifier chose a different code (gold noise or a hard case), 2 unchecked.
 - **General** 250 (26 chapters; 99 English, the rest across 15 languages and code-mixes): 149 verified, 40 disagreeing, 61 unchecked (verifier quota, see D12).
 - Frozen from here on, so before/after comparisons use identical notes. Earlier numbers in D10 came from growing partial sets and are not comparable. Scores will be reported both on all notes and on verified notes only.
+
+## D14 · 2026-11-05 15:21 · commit `23aeed2` · no-key knobs left alone; dense retrieval dropped
+
+- **A/B on frozen sets** (`tools/ab.py`; synthetic weighted 75/25 like the hidden set):
+
+  | Setting | Dev /75 | Synthetic /100 |
+  |---|---|---|
+  | baseline | 53.3 | 55.6 |
+  | COV_POW 1.0 | 54.6 | 56.0 |
+  | COV_POW 2.0 | 54.6 | 55.7 |
+  | no `.Y` penalty | 51.7 | 53.9 |
+  | no chapter gates | 52.5 | 55.8 |
+  | full-note weight 0.2 | 52.9 | 55.1 |
+  | full-note weight 0.6 | 51.2 | 54.4 |
+  | parent bonus 0 | 53.8 | 55.3 |
+  | parent bonus 0.3 | 53.3 | 56.2 |
+
+- **Read:** apart from `.Y` (-1.6 on dev and -1.7 on synthetic when removed), every knob is within about ±1 point, which is noise for 400 notes. Settings stay as they are rather than fitting noise. The chapter gates are neutral on synthetic and +0.8 on dev, and are kept because the rule is principled.
+- **Dense embeddings dropped** (D10 probe: about +1 to 3 top-1 points and +9 recall on general, no-key only). A gain of 1 to 2 points to the fallback path does not justify about 1.5 GB of torch plus model in the image, and a heavier `docker compose build` is a bigger risk to the clean-clone gate than the gain is worth. The keyed path covers language through its English extraction.
+- **Revisit:** an ONNX build of the embedding model (smaller, no torch) if time allows.
