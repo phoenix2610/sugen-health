@@ -1,0 +1,170 @@
+tools/mock_test.py  2026-11-05 17:10 IST  image sugen-icd11-coder  60 dev notes
+(mock) = scripted local server, real SDKs in the shipped image; (live) = real endpoint, invalid key.
+20/20 cases pass
+[PASS] (mock) anthropic: happy path
+       wall   5.9s  requests  120  status {200: 120}  billed $0.0226  llm-used 60/60  =no-key 0/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   LLM answer used for 60/60
+       ok   invalid code ZZ99.9 dropped
+       ok   2 successful calls per note
+       ok   anthropic path /v1/messages
+       ok   model claude-haiku-5-5
+       ok   output_config json_schema sent
+       ok   effort low (extract) + medium (choose)
+       ok   system prompt + max_tokens sent
+[PASS] (mock) openai: happy path
+       wall   5.2s  requests  120  status {200: 120}  billed $0.0672  llm-used 60/60  =no-key 0/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   LLM answer used for 60/60
+       ok   invalid code ZZ99.9 dropped
+       ok   2 successful calls per note
+       ok   openai path /v1/chat/completions
+       ok   model gpt-5-mini
+       ok   response_format json_object
+       ok   reasoning_effort low+medium
+       ok   max_completion_tokens sent
+[PASS] (mock) anthropic: output_config rejected -> retry plain
+       wall   6.0s  requests  128  status {200: 120, 400: 8}  billed $0.0226  llm-used 60/60  =no-key 0/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   LLM answer used for 60/60
+       ok   invalid code ZZ99.9 dropped
+       ok   2 successful calls per note
+       ok   rejection remembered: <= 1 rejected call per worker
+       ok   retried calls carry no output_config
+[PASS] (mock) openai: reasoning_effort rejected -> retry plain
+       wall   5.2s  requests  128  status {200: 120, 400: 8}  billed $0.0672  llm-used 60/60  =no-key 0/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   LLM answer used for 60/60
+       ok   invalid code ZZ99.9 dropped
+       ok   2 successful calls per note
+       ok   rejection remembered: <= 1 rejected call per worker
+       ok   successful calls carry no reasoning_effort
+[PASS] (mock) anthropic: non-JSON answers
+       wall   5.8s  requests  120  status {200: 120}  billed $0.0213  llm-used 0/60  =no-key 60/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   output == no-key baseline
+[PASS] (mock) openai: non-JSON answers
+       wall   5.3s  requests  120  status {200: 120}  billed $0.0640  llm-used 0/60  =no-key 60/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   output == no-key baseline
+[PASS] (mock) anthropic: stop_reason refusal
+       wall   5.8s  requests  120  status {200: 120}  billed $0.0141  llm-used 0/60  =no-key 60/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   output == no-key baseline
+[PASS] (mock) anthropic: 529 on first attempt (SDK retry)
+       wall  13.2s  requests  240  status {200: 120, 529: 120}  billed $0.0226  llm-used 60/60  =no-key 0/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   LLM answer used for 60/60
+       ok   invalid code ZZ99.9 dropped
+       ok   2 successful calls per note
+       ok   SDK retried each failed first attempt
+[PASS] (mock) openai: 500 on first attempt (SDK retry)
+       wall  12.4s  requests  240  status {200: 120, 500: 120}  billed $0.0672  llm-used 60/60  =no-key 0/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   LLM answer used for 60/60
+       ok   invalid code ZZ99.9 dropped
+       ok   2 successful calls per note
+       ok   SDK retried each failed first attempt
+[PASS] (mock) anthropic: 401 bad key -> breaker
+       wall   5.1s  requests   23  status {401: 23}  billed $0.0000  llm-used 0/60  =no-key 60/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   output == no-key baseline
+       ok   breaker stopped calls early
+[PASS] (mock) openai: 429 insufficient_quota -> breaker
+       wall   8.6s  requests   69  status {429: 69}  billed $0.0000  llm-used 0/60  =no-key 60/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   output == no-key baseline
+       ok   breaker stopped calls early
+[PASS] (mock) anthropic: budget guard (20M tokens/call)
+       wall   5.1s  requests    8  status {200: 8}  billed $16.0005  llm-used 0/60  =no-key 60/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   budget guard stopped calls early
+[PASS] (mock) anthropic: $0.01 budget cap, realistic usage
+       wall   5.4s  requests   26  status {200: 26}  billed $0.0040  llm-used 8/60  =no-key 52/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   billed $0.0040 <= cap $0.01
+       ok   calls made until the cap, then stopped
+[PASS] (mock) openai: $0.05 budget cap, realistic usage
+       wall   4.7s  requests   32  status {200: 32}  billed $0.0176  llm-used 15/60  =no-key 45/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   billed $0.0176 <= cap $0.05
+       ok   calls made until the cap, then stopped
+[PASS] (mock) anthropic: deadline guard (6 s, 2 s/call)
+       wall   9.2s  requests   16  status {200: 16}  billed $0.0031  llm-used 8/60  =no-key 52/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   deadline guard: run ends < 30 s
+       ok   some notes LLM, rest no-key
+[PASS] (mock) both keys set -> anthropic preferred
+       wall   6.0s  requests  120  status {200: 120}  billed $0.0226  llm-used 60/60  =no-key 0/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   LLM answer used for 60/60
+       ok   invalid code ZZ99.9 dropped
+       ok   2 successful calls per note
+       ok   anthropic path /v1/messages
+       ok   model claude-haiku-5-5
+       ok   output_config json_schema sent
+       ok   effort low (extract) + medium (choose)
+       ok   system prompt + max_tokens sent
+       ok   only anthropic called
+[PASS] (mock) anthropic: HTTPS_PROXY refuses CONNECT
+       wall   9.3s  requests   69  status -  billed $0.0000  llm-used 0/60  =no-key 60/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   output == no-key baseline
+       ok   CONNECT api.anthropic.com:443 seen by proxy
+[PASS] (mock) openai: HTTPS_PROXY refuses CONNECT
+       wall   8.6s  requests   69  status -  billed $0.0000  llm-used 0/60  =no-key 60/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   output == no-key baseline
+       ok   CONNECT api.openai.com:443 seen by proxy
+[PASS] (live) LIVE anthropic via CONNECT proxy, invalid key
+       wall   7.0s  requests    8  status -  billed $0.0000  llm-used 0/60  =no-key 60/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   output == no-key baseline
+       ok   CONNECT api.anthropic.com:443 seen by proxy
+       ok   server rejected the key (401 in log)
+[PASS] (live) LIVE openai via CONNECT proxy, invalid key
+       wall   6.3s  requests    8  status -  billed $0.0000  llm-used 0/60  =no-key 60/60
+       ok   exit 0
+       ok   60/60 ids
+       ok   all codes valid leaves
+       ok   output == no-key baseline
+       ok   CONNECT api.openai.com:443 seen by proxy
+       ok   server rejected the key (401 in log)

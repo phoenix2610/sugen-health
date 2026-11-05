@@ -60,7 +60,8 @@ Rules:
 - Code the MAIN condition of the visit. Return up to 3 codes, best first; codes 2-3 are your next most likely answers
   (e.g. the sibling with more/less specificity, or another stated diagnosis).
 - Use the MOST SPECIFIC code the note supports. If the note lacks the detail that a specific child needs, use the
-  '.Z' / 'unspecified' code of that family rather than guessing a specific child.- Avoid '.Y' ('other specified') unless the note names a specific type that none of the listed siblings cover.
+  '.Z' / 'unspecified' code of that family rather than guessing a specific child.
+- Avoid '.Y' ('other specified') unless the note names a specific type that none of the listed siblings cover.
 - Never return a code marked [parent]; choose one of its leaves.
 - A condition during pregnancy/childbirth goes to the pregnancy chapter (JA-JB) when such a code exists; a routine
   antenatal or check-up visit without disease goes to the 'factors influencing health status' codes (Q...).
@@ -102,20 +103,40 @@ def parse_json(text):
 
 
 class Budget:
+    """Spend tracker. Each call first reserves its worst case (estimated input + the max_tokens cap), so parallel
+    workers cannot jointly overshoot the limit; the reservation is replaced by the billed usage when the call ends."""
+
     def __init__(self, limit):
-        self.limit, self.spent, self.lock = limit, 0.0, threading.Lock()
+        self.limit, self.spent, self.reserved, self.lock = limit, 0.0, 0.0, threading.Lock()
         self.calls, self.tin, self.tout = 0, 0, 0
 
-    def add(self, model, tin, tout):
+    @staticmethod
+    def cost(model, tin, tout):
         pin, pout = PRICES.get(model, (5.0, 25.0))
+        return (tin * pin + tout * pout) / 1e6
+
+    def reserve(self, model, prompt, max_tokens):
+        c = self.cost(model, len(prompt) // 3 + 200, max_tokens)  # ~3 chars/token errs high for the input
         with self.lock:
+            if self.spent + self.reserved + c > self.limit:
+                return None
+            self.reserved += c
+            return c
+
+    def release(self, held):
+        with self.lock:
+            self.reserved -= held
+
+    def add(self, model, tin, tout, held=0.0):
+        with self.lock:
+            self.reserved -= held
             self.calls += 1
             self.tin += tin
             self.tout += tout
-            self.spent += (tin * pin + tout * pout) / 1e6
+            self.spent += self.cost(model, tin, tout)
 
     def ok(self):
-        return self.spent < self.limit
+        return self.spent + self.reserved < self.limit
 
 
 # ---------------------------------------------------------------- providers
@@ -126,16 +147,19 @@ class AnthropicProvider:
         import anthropic
         self.model = model or os.environ.get("CODER_ANTHROPIC_MODEL", "claude-haiku-5-5")
         self.client = anthropic.Anthropic(timeout=anthropic.Timeout(60.0, connect=10.0), max_retries=2)
+        self.structured = True  # set False once the API rejects output_config; checked per call (thread-safe enough)
 
     def complete(self, user, schema, effort="low", max_tokens=3000):
         kw = dict(model=self.model, max_tokens=max_tokens, system=SYSTEM,
-                  messages=[{"role": "user", "content": user}],
-                  output_config={"effort": effort, "format": {"type": "json_schema", "schema": schema}})
+                  messages=[{"role": "user", "content": user}])
+        if self.structured:
+            kw["output_config"] = {"effort": effort, "format": {"type": "json_schema", "schema": schema}}
         try:
             r = self.client.messages.create(**kw)
         except Exception as e:  # older API surface / model without structured output: retry plain
-            if "output_config" not in str(e) and "format" not in str(e):
+            if "output_config" not in kw or ("output_config" not in str(e) and "format" not in str(e)):
                 raise
+            self.structured = False
             kw.pop("output_config")
             r = self.client.messages.create(**kw)
         text = "".join(b.text for b in r.content if getattr(b, "type", "") == "text")
@@ -160,7 +184,7 @@ class OpenAIProvider:
         try:
             r = self.client.chat.completions.create(**kw)
         except Exception as e:
-            if self.reasoning and "reasoning" in str(e):
+            if "reasoning_effort" in kw and "reasoning" in str(e):
                 self.reasoning = False
                 kw.pop("reasoning_effort")
                 r = self.client.chat.completions.create(**kw)
@@ -237,11 +261,21 @@ def norm_code(c):
     return re.split(r"[&/]", str(c).strip().upper())[0].strip()
 
 
-def code_note(provider, budget, kb, ranker, text, term_index, base):
-    if not budget.ok():
+def call(provider, budget, prompt, schema, effort, max_tokens):
+    held = budget.reserve(provider.model, SYSTEM + prompt, max_tokens)
+    if held is None:
         raise RuntimeError("budget")
-    t, m, i, o = provider.complete(EXTRACT.format(note=text[:6000]), SCHEMA_EXTRACT, effort="low", max_tokens=1500)
-    budget.add(m, i, o)
+    try:
+        t, m, i, o = provider.complete(prompt, schema, effort=effort, max_tokens=max_tokens)
+    except Exception:
+        budget.release(held)
+        raise
+    budget.add(m, i, o, held)
+    return t, m, i, o
+
+
+def code_note(provider, budget, kb, ranker, text, term_index, base):
+    t, m, i, o = call(provider, budget, EXTRACT.format(note=text[:6000]), SCHEMA_EXTRACT, "low", 1500)
     ext = parse_json(t)
     if not isinstance(ext, dict):
         ext = {}
@@ -250,12 +284,9 @@ def code_note(provider, budget, kb, ranker, text, term_index, base):
     ext["others"] = [s for s in (ext.get("others") or []) if isinstance(s, str)][:3]
     ext["main"], ext["qualifiers"] = str(ext.get("main") or ""), str(ext.get("qualifiers") or "")
     idxs = candidates(kb, ranker, text, ext)
-    if not budget.ok():
-        raise RuntimeError("budget")
     prompt = CHOOSE.format(extract=json.dumps(ext, ensure_ascii=False), note=text[:6000],
                            cands=format_cands(kb, idxs, term_index))
-    t, m, i, o = provider.complete(prompt, SCHEMA_CHOOSE, effort="medium", max_tokens=4000)
-    budget.add(m, i, o)
+    t, m, i, o = call(provider, budget, prompt, SCHEMA_CHOOSE, "medium", 4000)
     raw = parse_json(t).get("codes", []) if isinstance(parse_json(t), dict) else []
     scores = ranker.scores(text)
     out = []

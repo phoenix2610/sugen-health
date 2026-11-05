@@ -59,6 +59,7 @@ def main():
     w.flush()
     llm.WORKERS = a.workers
     llm.DEADLINE_S = 10 ** 9
+    llm.BUDGET_USD = 10 ** 9  # Gemini is priced as an unknown model (5/25 per 1M), which would trip the $5 guard
     prov = GeminiProvider(a.model, tuple(x for x in a.fallbacks.split(",") if x))
     log = []
     t0 = time.time()
