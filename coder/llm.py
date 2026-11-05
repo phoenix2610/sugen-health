@@ -61,6 +61,11 @@ Rules:
   (e.g. the sibling with more/less specificity, or another stated diagnosis).
 - Use the MOST SPECIFIC code the note supports. If the note lacks the detail that a specific child needs, use the
   '.Z' / 'unspecified' code of that family rather than guessing a specific child.
+- Before answering, compare the leading family's sibling titles one by one against what the note states (site and
+  laterality, organism or test result, acute/chronic, severity, with/without complication, exacerbation, type/stage,
+  measured values such as which blood-pressure components are raised). Pick the sibling whose every qualifier is
+  supported; a broader block-level 'unspecified' code (e.g. 'X, unspecified' at the top of a block) is wrong when a
+  narrower family (site/organism) is stated.
 - Avoid '.Y' ('other specified') unless the note names a specific type that none of the listed siblings cover.
 - Never return a code marked [parent]; choose one of its leaves.
 - A condition during pregnancy/childbirth goes to the pregnancy chapter (JA-JB) when such a code exists; a routine
