@@ -99,3 +99,9 @@ Window: the pack arrived just after midnight on 2026-11-05 IST, so the deadline 
 - **Prompt change (in this commit, unmeasured):** a sibling-by-sibling qualifier checklist in CHOOSE, aimed at the main remaining error class (`.Z` versus a specific child, and a block-level "unspecified" versus a stated site). The "which BP components are raised" example reflects ICD-11's own split of BA00, but a dev miss (dev-042) is what drew my attention to it, so it is partly dev-informed.
 - **Quota plan:** Gemma (separate quota) runs the 160-note synthetic projection now. Flash-lite quotas reset around 13:30 IST on 6 Nov, which is when the prompt A/B on dev and the re-verification happen.
 - **Revisit:** if the prompt A/B shows no gain on synthetic, revert it.
+
+## D13 · 2026-11-05 15:19 · commit `354f803` · synthetic sets frozen at 400 notes
+
+- **Core** 150 (English, 17 chapters): 118 verified, 30 where the blind verifier chose a different code (gold noise or a hard case), 2 unchecked.
+- **General** 250 (26 chapters; 99 English, the rest across 15 languages and code-mixes): 149 verified, 40 disagreeing, 61 unchecked (verifier quota, see D12).
+- Frozen from here on, so before/after comparisons use identical notes. Earlier numbers in D10 came from growing partial sets and are not comparable. Scores will be reported both on all notes and on verified notes only.
